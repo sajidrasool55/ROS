@@ -348,6 +348,7 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
         shipping = float("nan")
         handling = float("nan")
         zone = ""
+        rule_hint = "Sheet1 (country rates)"
 
         if country == "AUSTRALIA" and order_type in {"YES", "NO"}:
             postcode = normalize_postcode(df.at[idx, "POST CODE"])
@@ -367,12 +368,14 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
                 missing_map[map_key]["orders"].append(str(order))
                 missing_map[map_key]["indexes"].append(int(idx))
                 continue
+            rule_hint = "Sheet3 (postcode->zone) + Sheet2 (zone rates)"
             shipping, handling = find_rate(calc.zone_rates, zone, order_type, order_weight)
         else:
             key_country = country
             available_countries = set(calc.country_rates["key"])
             if key_country not in available_countries:
                 key_country = "UNITED STATES"
+            rule_hint = f"Sheet1 (country rates, country used: {key_country})"
             shipping, handling = find_rate(calc.country_rates, key_country, order_type, order_weight)
 
         if pd.isna(shipping) or pd.isna(handling):
@@ -381,7 +384,7 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
                 detail=(
                     f"No shipping rule found for order {order}. "
                     f"country={country}, zone={zone or '-'}, type={order_type}, weight={order_weight}. "
-                    "Please confirm matching rows exist in Calculator.xlsx (Sheet1/Sheet2)."
+                    f"Checked: {rule_hint}."
                 ),
             )
 
