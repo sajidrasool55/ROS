@@ -254,7 +254,7 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
 
     postcode_to_zone = dict(zip(calc.postcode_zone["postcode"], calc.postcode_zone["zone"]))
 
-    missing_postcodes: list[dict[str, Any]] = []
+    missing_map: dict[str, dict[str, Any]] = {}
     first_idx_by_order = df.groupby("ORDERS").head(1).index
 
     for idx in first_idx_by_order:
@@ -271,7 +271,15 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
             postcode = str(df.at[idx, "POST CODE"]).strip().upper().replace(" ", "")
             zone = postcode_to_zone.get(postcode, "")
             if not zone:
-                missing_postcodes.append({"index": int(idx), "order": str(order), "postcode": postcode})
+                map_key = postcode or "<BLANK>"
+                if map_key not in missing_map:
+                    missing_map[map_key] = {
+                        "postcode": postcode,
+                        "orders": [],
+                        "indexes": [],
+                    }
+                missing_map[map_key]["orders"].append(str(order))
+                missing_map[map_key]["indexes"].append(int(idx))
                 continue
             shipping, handling = find_rate(calc.zone_rates, zone, order_type, order_weight)
         else:
@@ -293,6 +301,11 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
         df.at[idx, "Handling"] = round(handling, 4)
         df.at[idx, "Zone"] = zone
         df.at[idx, "Total Value"] = round(total_value, 4)
+
+    missing_postcodes = sorted(
+        missing_map.values(),
+        key=lambda item: (item["postcode"] == "", item["postcode"]),
+    )
 
     df = df.drop(columns=["RowWeight"])
     return df, missing_postcodes
@@ -396,12 +409,12 @@ async def recalculate_orders(request: Request, session_id: str = Form(...)):
     df, missing = load_processing_session(session_id)
 
     form = await request.form()
-    for entry in missing:
-        idx = entry["index"]
-        field_name = f"postcode_{idx}"
+    for i, entry in enumerate(missing):
+        field_name = f"postcode_{i}"
         corrected = str(form.get(field_name, "")).strip().upper().replace(" ", "")
         if corrected:
-            df.at[idx, "POST CODE"] = corrected
+            for idx in entry.get("indexes", []):
+                df.at[idx, "POST CODE"] = corrected
 
     processed, remaining = calculate_shipping(df, calc)
     if remaining:

@@ -38,23 +38,23 @@
 
   {% if missing and session_id %}
   <form action="/process-orders/recalculate" method="post">
-    <h2>Fix Invalid Australian Postcodes</h2>
+    <h2>Fix Invalid Australian Postcodes (Invalid list only)</h2>
     <input type="hidden" name="session_id" value="{{ session_id }}" />
     <table>
       <thead>
         <tr>
-          <th>Order</th>
-          <th>Current Postcode</th>
+          <th>Affected Orders</th>
+          <th>Invalid Postcode</th>
           <th>Corrected Postcode</th>
         </tr>
       </thead>
       <tbody>
         {% for row in missing %}
         <tr>
-          <td>{{ row.order }}</td>
-          <td>{{ row.postcode }}</td>
+          <td>{{ row.orders|join(', ') }}</td>
+          <td>{{ row.postcode if row.postcode else '(blank)' }}</td>
           <td>
-            <input type="text" name="postcode_{{ row.index }}" value="{{ row.postcode }}" required />
+            <input type="text" name="postcode_{{ loop.index0 }}" value="{{ row.postcode }}" required />
           </td>
         </tr>
         {% endfor %}
