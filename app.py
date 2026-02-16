@@ -100,9 +100,50 @@ def normalize_postcode(value: Any) -> str:
     text = str(value).strip().upper().replace(" ", "")
     if text in {"", "NAN", "NONE", "NULL"}:
         return ""
+
+    # Excel often loads integer-like postcodes as floats (e.g. 2036.0).
     if text.endswith(".0") and text[:-2].isdigit():
-        return text[:-2]
+        text = text[:-2]
+
     return text
+
+
+def postcode_numeric_key(postcode: str) -> str:
+    """Numeric comparison key so values like 0800 and 800 can match when needed."""
+    if postcode.isdigit():
+        key = postcode.lstrip("0")
+        return key or "0"
+    return postcode
+
+
+def postcode_lookup_keys(value: Any) -> list[str]:
+    """Generate robust postcode keys for matching across Excel/CSV formats."""
+    pc = normalize_postcode(value)
+    if not pc:
+        return []
+
+    keys: list[str] = [pc]
+
+    # Numeric fallback (e.g. 0800 vs 800)
+    numeric = postcode_numeric_key(pc)
+    if numeric not in keys:
+        keys.append(numeric)
+
+    # Handle float-like text variants that may appear after file conversions (e.g. 2036.00)
+    if "." in pc:
+        try:
+            as_float = float(pc)
+            if as_float.is_integer():
+                int_key = str(int(as_float))
+                if int_key not in keys:
+                    keys.append(int_key)
+                int_numeric = postcode_numeric_key(int_key)
+                if int_numeric not in keys:
+                    keys.append(int_numeric)
+        except ValueError:
+            pass
+
+    return keys
 
 
 def load_calculator_from_excel(file_bytes: bytes) -> CalculatorData:
@@ -199,8 +240,10 @@ def preprocess_orders(df: pd.DataFrame, cutoff_order: str) -> pd.DataFrame:
 
     cutoff_order = str(cutoff_order).strip()
     if cutoff_order:
-        mask = cleaned["ORDERS"].astype(str) >= cutoff_order
-        cleaned = cleaned[mask]
+        order_series = cleaned["ORDERS"].astype(str).str.strip()
+        matches = cleaned.index[order_series == cutoff_order].tolist()
+        if matches:
+            cleaned = cleaned.loc[matches[0]:]
 
     sku = cleaned["平台SKU"].astype(str)
     cleaned = cleaned[~sku.str.contains("-US", na=False)]
@@ -255,7 +298,11 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
     order_weight_map = df.groupby("ORDERS")["RowWeight"].sum().to_dict()
     order_type_map = df.groupby("ORDERS")["TYPE"].apply(pick_order_type).to_dict()
 
-    postcode_to_zone = dict(zip(calc.postcode_zone["postcode"], calc.postcode_zone["zone"]))
+    postcode_to_zone: dict[str, str] = {}
+    for _, row in calc.postcode_zone.iterrows():
+        zone = str(row["zone"]).strip().upper()
+        for key in postcode_lookup_keys(row["postcode"]):
+            postcode_to_zone.setdefault(key, zone)
 
     missing_map: dict[str, dict[str, Any]] = {}
     first_idx_by_order = df.groupby("ORDERS").head(1).index
@@ -272,7 +319,11 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
 
         if country == "AUSTRALIA" and order_type in {"YES", "NO"}:
             postcode = normalize_postcode(df.at[idx, "POST CODE"])
-            zone = postcode_to_zone.get(postcode, "")
+            zone = ""
+            for key in postcode_lookup_keys(postcode):
+                zone = postcode_to_zone.get(key, "")
+                if zone:
+                    break
             if not zone:
                 map_key = postcode or "<BLANK>"
                 if map_key not in missing_map:
