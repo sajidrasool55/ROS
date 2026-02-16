@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orders Processing App</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    form { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; }
+    th { background: #f3f3f3; }
+    .msg { padding: 0.8rem; background: #edf7ed; border: 1px solid #8ac28a; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Orders Processing</h1>
+
+  {% if message %}
+  <div class="msg">{{ message }}</div>
+  {% endif %}
+
+  <form action="/admin/upload-calculator" method="post" enctype="multipart/form-data">
+    <h2>Admin: Upload Calculator.xlsx</h2>
+    <input type="file" name="calculator" accept=".xlsx,.xls" required />
+    <button type="submit">Upload Calculator</button>
+  </form>
+
+  <form action="/process-orders" method="post" enctype="multipart/form-data">
+    <h2>User: Upload Orders CSV</h2>
+    <label>Orders CSV:</label>
+    <input type="file" name="orders" accept=".csv" required />
+    <br><br>
+    <label>Cutoff Order:</label>
+    <input type="text" name="cutoff_order" />
+    <button type="submit">Process Orders</button>
+  </form>
+
+  {% if missing and session_id %}
+  <form action="/process-orders/recalculate" method="post">
+    <h2>Fix Invalid Australian Postcodes</h2>
+    <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Current Postcode</th>
+          <th>Corrected Postcode</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in missing %}
+        <tr>
+          <td>{{ row.order }}</td>
+          <td>{{ row.postcode }}</td>
+          <td>
+            <input type="text" name="postcode_{{ row.index }}" value="{{ row.postcode }}" required />
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <br>
+    <button type="submit">Recalculate & Download cleaned_orders.xlsx</button>
+  </form>
+  {% endif %}
+</body>
+</html>
