@@ -96,6 +96,15 @@ def optional_col_match(df: pd.DataFrame, options: list[str]) -> str | None:
         return None
 
 
+def normalize_postcode(value: Any) -> str:
+    text = str(value).strip().upper().replace(" ", "")
+    if text in {"", "NAN", "NONE", "NULL"}:
+        return ""
+    if text.endswith(".0") and text[:-2].isdigit():
+        return text[:-2]
+    return text
+
+
 def load_calculator_from_excel(file_bytes: bytes) -> CalculatorData:
     xl = pd.ExcelFile(io.BytesIO(file_bytes))
     sheet1 = normalize_columns(pd.read_excel(xl, sheet_name=0))
@@ -137,13 +146,7 @@ def standardize_postcode_zone(df: pd.DataFrame) -> pd.DataFrame:
     zone_col = col_match(df, ["zone", "shipping zone"])
 
     out = pd.DataFrame()
-    out["postcode"] = (
-        df[pc_col]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-        .str.replace(" ", "", regex=False)
-    )
+    out["postcode"] = df[pc_col].apply(normalize_postcode)
     out["zone"] = df[zone_col].astype(str).str.strip().str.upper()
     out = out[out["postcode"].ne("")]
     return out.drop_duplicates(subset=["postcode"])
@@ -210,7 +213,7 @@ def preprocess_orders(df: pd.DataFrame, cutoff_order: str) -> pd.DataFrame:
     cleaned["QTY"] = pd.to_numeric(cleaned["QTY"], errors="coerce").fillna(0)
     cleaned["WEIGHT"] = pd.to_numeric(cleaned["WEIGHT"], errors="coerce").fillna(0)
     cleaned["COUNTRY"] = cleaned["COUNTRY"].astype(str).str.strip().str.upper()
-    cleaned["POST CODE"] = cleaned["POST CODE"].astype(str).str.strip().str.upper().str.replace(" ", "", regex=False)
+    cleaned["POST CODE"] = cleaned["POST CODE"].apply(normalize_postcode)
     cleaned["RowWeight"] = cleaned["QTY"] * cleaned["WEIGHT"]
 
     return cleaned
@@ -268,7 +271,7 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
         zone = ""
 
         if country == "AUSTRALIA" and order_type in {"YES", "NO"}:
-            postcode = str(df.at[idx, "POST CODE"]).strip().upper().replace(" ", "")
+            postcode = normalize_postcode(df.at[idx, "POST CODE"])
             zone = postcode_to_zone.get(postcode, "")
             if not zone:
                 map_key = postcode or "<BLANK>"
@@ -411,7 +414,7 @@ async def recalculate_orders(request: Request, session_id: str = Form(...)):
     form = await request.form()
     for i, entry in enumerate(missing):
         field_name = f"postcode_{i}"
-        corrected = str(form.get(field_name, "")).strip().upper().replace(" ", "")
+        corrected = normalize_postcode(form.get(field_name, ""))
         if corrected:
             for idx in entry.get("indexes", []):
                 df.at[idx, "POST CODE"] = corrected
