@@ -80,6 +80,11 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def is_missing_text(value: Any) -> bool:
+    text = str(value).strip().upper()
+    return text in {"", "NAN", "NONE", "NULL"}
+
+
 def col_match(df: pd.DataFrame, options: list[str]) -> str:
     lower_map = {str(c).strip().lower(): c for c in df.columns}
     for opt in options:
@@ -262,10 +267,20 @@ def preprocess_orders(df: pd.DataFrame, cutoff_order: str) -> pd.DataFrame:
         if matches:
             cleaned = cleaned.loc[matches[0]:]
 
-    sku = cleaned["平台SKU"].astype(str)
-    cleaned = cleaned[~sku.str.contains("-US", na=False)]
-    sku = cleaned["平台SKU"].astype(str)
-    cleaned = cleaned[sku != "WLN-INSERT1"]
+    sku = cleaned["平台SKU"].astype(str).str.strip()
+    cleaned = cleaned[~sku.str.upper().str.contains("-US", na=False)]
+
+    sku = cleaned["平台SKU"].astype(str).str.strip()
+    cleaned = cleaned[~sku.str.upper().eq("WLN-INSERT1")]
+
+    # Remove rows where SKU starts with NONE (e.g. NONE-0000)
+    sku = cleaned["平台SKU"].astype(str).str.strip().str.upper()
+    cleaned = cleaned[~sku.str.startswith("NONE", na=False)]
+
+    # If both SKU and WEIGHT are missing, skip those rows from calculation
+    weight_missing = cleaned["WEIGHT"].apply(is_missing_text)
+    sku_missing = cleaned["平台SKU"].apply(is_missing_text)
+    cleaned = cleaned[~(sku_missing & weight_missing)]
 
     cleaned["TYPE"] = cleaned["TYPE"].astype(str).str.strip().str.upper()
     cleaned.loc[cleaned["TYPE"].isin(["NYLON", "POLYESTER"]), "TYPE"] = "YES"
