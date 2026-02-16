@@ -146,6 +146,20 @@ def postcode_lookup_keys(value: Any) -> list[str]:
     return keys
 
 
+def normalize_zone_key(value: Any) -> str:
+    text = str(value).strip().upper()
+    if text in {"", "NAN", "NONE", "NULL"}:
+        return ""
+    # Normalize numeric zone variants (2, 2.0, 2.00 -> "2")
+    try:
+        num = float(text)
+        if num.is_integer():
+            return str(int(num))
+    except ValueError:
+        pass
+    return text
+
+
 def load_calculator_from_excel(file_bytes: bytes) -> CalculatorData:
     xl = pd.ExcelFile(io.BytesIO(file_bytes))
     sheet1 = normalize_columns(pd.read_excel(xl, sheet_name=0))
@@ -169,7 +183,10 @@ def standardize_rates(df: pd.DataFrame, key: str) -> pd.DataFrame:
     max_col = optional_col_match(df, ["max_weight", "max weight", "weight_to", "to", "max", "weight"])
 
     out = pd.DataFrame()
-    out["key"] = df[key_col].astype(str).str.strip().str.upper()
+    if key == "zone":
+        out["key"] = df[key_col].apply(normalize_zone_key)
+    else:
+        out["key"] = df[key_col].astype(str).str.strip().str.upper()
     out["type"] = df[type_col].astype(str).str.strip().str.upper()
     out["shipping"] = pd.to_numeric(df[ship_col], errors="coerce")
     out["handling"] = pd.to_numeric(df[handle_col], errors="coerce")
@@ -188,7 +205,7 @@ def standardize_postcode_zone(df: pd.DataFrame) -> pd.DataFrame:
 
     out = pd.DataFrame()
     out["postcode"] = df[pc_col].apply(normalize_postcode)
-    out["zone"] = df[zone_col].astype(str).str.strip().str.upper()
+    out["zone"] = df[zone_col].apply(normalize_zone_key)
     out = out[out["postcode"].ne("")]
     return out.drop_duplicates(subset=["postcode"])
 
@@ -300,7 +317,7 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
 
     postcode_to_zone: dict[str, str] = {}
     for _, row in calc.postcode_zone.iterrows():
-        zone = str(row["zone"]).strip().upper()
+        zone = normalize_zone_key(row["zone"])
         for key in postcode_lookup_keys(row["postcode"]):
             postcode_to_zone.setdefault(key, zone)
 
@@ -346,7 +363,11 @@ def calculate_shipping(cleaned: pd.DataFrame, calc: CalculatorData) -> tuple[pd.
         if pd.isna(shipping) or pd.isna(handling):
             raise HTTPException(
                 status_code=400,
-                detail=f"No shipping rule found for order {order} (country/zone/type/weight combination missing in Calculator.xlsx).",
+                detail=(
+                    f"No shipping rule found for order {order}. "
+                    f"country={country}, zone={zone or '-'}, type={order_type}, weight={order_weight}. "
+                    "Please confirm matching rows exist in Calculator.xlsx (Sheet1/Sheet2)."
+                ),
             )
 
         total_value = (((order_weight * shipping) / 1000) + handling) / 7 + 0.9
