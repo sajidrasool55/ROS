@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; max-width: 520px; }
+    .card { border: 1px solid #ddd; padding: 1.2rem; border-radius: 10px; }
+    .msg { padding: 0.8rem; background: #fff3cd; border: 1px solid #ffeeba; margin-bottom: 1rem; border-radius: 8px; }
+    label { display:block; margin-top: 0.8rem; }
+    input { width: 100%; padding: 10px; margin-top: 0.4rem; }
+    button { margin-top: 1rem; padding: 10px 16px; border: none; background: #2196F3; color: white; border-radius: 6px; cursor:pointer; }
+    small { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Login</h1>
+
+  {% if message %}
+  <div class="msg">{{ message }}</div>
+  {% endif %}
+
+  <div class="card">
+    <form action="/login" method="post">
+      <label>Username</label>
+      <input type="text" name="username" required />
+
+      <label>Password</label>
+      <input type="password" name="password" required />
+
+      <button type="submit">Login</button>
+
+      <p><small>Default admin: <b>admin</b> / <b>admin123</b> (change it from Admin Users page)</small></p>
+    </form>
+  </div>
+</body>
+</html>

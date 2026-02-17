@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Users</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem; }
+    .links a { margin-left: 12px; text-decoration:none; color:#2196F3; }
+    form { margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; }
+    th { background: #f3f3f3; }
+    .msg { padding: 0.8rem; background: #edf7ed; border: 1px solid #8ac28a; margin-bottom: 1rem; border-radius: 8px; }
+    input { padding: 8px; }
+    button { padding: 8px 14px; border: none; border-radius: 6px; background:#2196F3; color:white; cursor:pointer; }
+    .danger { background:#e53935; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div><h1 style="margin:0;">Admin Users</h1></div>
+    <div class="links">
+      <a href="/">Home</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </div>
+
+  {% if message %}
+  <div class="msg">{{ message }}</div>
+  {% endif %}
+
+  <form action="/admin/users/create" method="post">
+    <h2>Create User</h2>
+    <label>Username:</label>
+    <input type="text" name="username" required />
+    <label>Password:</label>
+    <input type="text" name="password" required />
+    <label style="margin-left:10px;">
+      <input type="checkbox" name="is_admin" value="1" /> Admin
+    </label>
+    <div style="margin-top:10px;">
+      <button type="submit">Create</button>
+    </div>
+  </form>
+
+  <h2>Users</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Admin</th>
+        <th>Created</th>
+        <th>Reset Password</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ "Yes" if u.is_admin else "No" }}</td>
+        <td>{{ u.created_at }}</td>
+        <td>
+          <form action="/admin/users/reset" method="post" style="margin:0;">
+            <input type="hidden" name="user_id" value="{{ u.id }}" />
+            <input type="text" name="new_password" placeholder="New password" required />
+            <button type="submit">Reset</button>
+          </form>
+        </td>
+        <td>
+          <form action="/admin/users/delete" method="post" style="margin:0;">
+            <input type="hidden" name="user_id" value="{{ u.id }}" />
+            <button class="danger" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</body>
+</html>
