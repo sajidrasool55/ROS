@@ -6,45 +6,48 @@
   <title>Admin Users</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 2rem; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem; }
-    .links a { margin-left: 12px; text-decoration:none; color:#2196F3; }
-    form { margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ddd; padding: 0.5rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; vertical-align: top; }
     th { background: #f3f3f3; }
-    .msg { padding: 0.8rem; background: #edf7ed; border: 1px solid #8ac28a; margin-bottom: 1rem; border-radius: 8px; }
-    input { padding: 8px; }
-    button { padding: 8px 14px; border: none; border-radius: 6px; background:#2196F3; color:white; cursor:pointer; }
-    .danger { background:#e53935; }
+    .msg { padding: 0.8rem; background: #edf7ed; border: 1px solid #8ac28a; margin-bottom: 1rem; border-radius: 6px; }
+    .topbar {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom: 12px;
+    }
+    a { text-decoration: none; color: #1976d2; }
+    .card { border:1px solid #ddd; padding: 14px; border-radius: 10px; margin-bottom: 18px; }
+    .btn { padding: 8px 12px; cursor: pointer; }
+    .danger { background:#e53935; color:#fff; border: none; border-radius: 6px; }
+    .primary { background:#1976d2; color:#fff; border: none; border-radius: 6px; }
   </style>
 </head>
 <body>
 
   <div class="topbar">
-    <div><h1 style="margin:0;">Admin Users</h1></div>
-    <div class="links">
-      <a href="/">Home</a>
+    <h1>Admin Users</h1>
+    <div>
+      <a href="/">Home</a> |
       <a href="/logout">Logout</a>
     </div>
   </div>
 
   {% if message %}
-  <div class="msg">{{ message }}</div>
+    <div class="msg">{{ message }}</div>
   {% endif %}
 
-  <form action="/admin/users/create" method="post">
+  <div class="card">
     <h2>Create User</h2>
-    <label>Username:</label>
-    <input type="text" name="username" required />
-    <label>Password:</label>
-    <input type="text" name="password" required />
-    <label style="margin-left:10px;">
-      <input type="checkbox" name="is_admin" value="1" /> Admin
-    </label>
-    <div style="margin-top:10px;">
-      <button type="submit">Create</button>
-    </div>
-  </form>
+    <form action="/admin/users/create" method="post">
+      Username:
+      <input type="text" name="username" required />
+      Password:
+      <input type="text" name="password" required />
+      <label style="margin-left:10px;">
+        <input type="checkbox" name="is_admin" value="1" /> Admin
+      </label>
+      <button class="btn primary" type="submit">Create</button>
+    </form>
+  </div>
 
   <h2>Users</h2>
   <table>
@@ -64,16 +67,16 @@
         <td>{{ "Yes" if u.is_admin else "No" }}</td>
         <td>{{ u.created_at }}</td>
         <td>
-          <form action="/admin/users/reset" method="post" style="margin:0;">
+          <form action="/admin/users/reset" method="post" style="display:flex; gap:10px; align-items:center;">
             <input type="hidden" name="user_id" value="{{ u.id }}" />
             <input type="text" name="new_password" placeholder="New password" required />
-            <button type="submit">Reset</button>
+            <button class="btn primary" type="submit">Reset</button>
           </form>
         </td>
         <td>
-          <form action="/admin/users/delete" method="post" style="margin:0;">
+          <form action="/admin/users/delete" method="post">
             <input type="hidden" name="user_id" value="{{ u.id }}" />
-            <button class="danger" type="submit">Delete</button>
+            <button class="btn danger" type="submit">Delete</button>
           </form>
         </td>
       </tr>

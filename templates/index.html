@@ -10,53 +10,63 @@
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
     th, td { border: 1px solid #ddd; padding: 0.5rem; }
     th { background: #f3f3f3; }
-    .msg { padding: 0.8rem; background: #edf7ed; border: 1px solid #8ac28a; margin-bottom: 1rem; border-radius: 8px; }
-    .totalbox { margin-top: 0.5rem; padding: 0.8rem; background: #e7f4e4; border: 1px solid #8bc34a; border-radius: 8px; }
-    .btn {
-      padding: 10px 18px;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
+    .msg { padding: 0.8rem; background: #edf7ed; border: 1px solid #8ac28a; margin-bottom: 1rem; border-radius: 6px; }
+    .err { padding: 0.8rem; background: #fdecea; border: 1px solid #f5c2c7; margin-bottom: 1rem; border-radius: 6px; }
+    .topbar {
+      background:#222; color:#fff; padding:12px 16px; border-radius:8px; margin-bottom:16px;
+      display:flex; justify-content:space-between; align-items:center;
     }
-    .btn-blue { background: #2196F3; color: white; }
+    .topbar a { color:#90caf9; text-decoration:none; margin-left: 10px; }
+    .totalbox { margin-top: 20px; padding: 15px; background:#e7f4e4; border:1px solid #8bc34a; border-radius: 8px; }
+    .btn { padding: 8px 12px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h1>Orders Processing</h1>
+
+  <div class="topbar">
+    <div><b>Orders Processing</b></div>
+    <div>
+      Logged in as: <b>{{ user.username }}</b>
+      {% if user.is_admin %}
+        <a href="/admin/users">Admin Users</a>
+      {% endif %}
+      <a href="/logout" style="color:#ff8a80;">Logout</a>
+    </div>
+  </div>
 
   {% if message %}
-  <div class="msg">{{ message }}</div>
-  {% endif %}
-
-  {% if total_sum is not none %}
-  <div class="totalbox">
-    <h3 style="margin:0;">Total Amount: {{ "%.2f"|format(total_sum) }}</h3>
-
-    {% if download_id %}
-    <div style="margin-top:12px;">
-      <a href="/download/{{ download_id }}">
-        <button class="btn btn-blue" type="button">Download Excel File</button>
-      </a>
-    </div>
-    {% endif %}
-  </div>
+    <div class="msg">{{ message }}</div>
   {% endif %}
 
   <form action="/admin/upload-calculator" method="post" enctype="multipart/form-data">
-    <h2>Admin: Upload Calculator.xlsx</h2>
+    <h2>Upload Calculator.xlsx</h2>
     <input type="file" name="calculator" accept=".xlsx,.xls" required />
-    <button type="submit">Upload Calculator</button>
+    <button class="btn" type="submit">Upload Calculator</button>
   </form>
 
   <form action="/process-orders" method="post" enctype="multipart/form-data">
-    <h2>User: Upload Orders CSV</h2>
+    <h2>Upload Orders CSV</h2>
     <label>Orders CSV:</label>
     <input type="file" name="orders" accept=".csv" required />
     <br><br>
     <label>Cutoff Order:</label>
     <input type="text" name="cutoff_order" required />
-    <button type="submit">Process Orders</button>
+    <button class="btn" type="submit">Process Orders</button>
+
+    {% if total_sum is not none %}
+      <div class="totalbox">
+        <h3>Total Amount: {{ "%.2f"|format(total_sum) }}</h3>
+      </div>
+    {% endif %}
+
+    {% if download_id %}
+      <div style="margin-top:12px;">
+        <a class="btn" style="display:inline-block; background:#1976d2; color:#fff; border-radius:6px; text-decoration:none;"
+           href="/download/{{ download_id }}">
+          Download Excel
+        </a>
+      </div>
+    {% endif %}
   </form>
 
   {% if missing and session_id %}
@@ -84,8 +94,9 @@
       </tbody>
     </table>
     <br>
-    <button type="submit">Recalculate</button>
+    <button class="btn" type="submit">Recalculate</button>
   </form>
   {% endif %}
+
 </body>
 </html>
