@@ -675,7 +675,7 @@ async def process_orders(
                 },
                 status_code=400,
             )
-        cleaned = cleaned.iloc[cutoff_idx:].copy()
+        cleaned = cleaned.iloc[: cutoff_idx + 1].copy()
 
     calc = read_calculator_or_fail()
     processed, missing = calculate_shipping(cleaned, calc)
